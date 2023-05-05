@@ -6,6 +6,7 @@
 Скрипт создан для личного пользования.
 '''
 import os
+import platform
 import subprocess
 import argparse
 from sys import argv
@@ -42,14 +43,14 @@ def createParser():
     parser.add_argument ('-e', '--encrypt', action='store_true', help = 'Шифрует файл, создает скрытый ключ или использует ваш')
     parser.add_argument ('-d', '--decrypt', action='store_true',help = 'Расшифровывает файл, для работы необходимо передать параметр key')
     parser.add_argument('target', nargs='?' ,type=str, help = 'Шифруемый файл')
-    parser.add_argument('key', nargs='?', type=str, help = 'Ключ шифрования')
+    parser.add_argument('key', nargs='?', type=str, help = 'Ключ шифрования, если ключа нет при шифровании можно не указывать, он создастся автоматически')
     return parser
 
 def write_key():
     # Создание ключа для шифрования и автоматическое скрытие его в зависимости от ОС
-    name = os.uname()
+    name = platform.platform()
     key = Fernet.generate_key()
-    if name.sysname == 'Linux':
+    if 'Linux' in name:
         with open('.crypto.key', 'wb') as key_file:
             key_file.write(key)
         print('Ключ сохранен .crypto.key и скрыт')
@@ -97,18 +98,24 @@ def main():
     crypt = None
     args = {'key': None, 'target': None}
     for name in namespace:
-        if name == 'encrypt' and namespace[name]: # Если encrypt True устанавливает значение crypt True
-            crypt = True
+        if name == 'encrypt': # Если encrypt True устанавливает значение crypt True
+            if namespace[name]:
+                crypt = True
             continue
-        elif name == 'decrypt' and namespace[name]:# Если decrypt True устанавливает значение crypt False
-            crypt = False
+        elif name == 'decrypt':# Если decrypt True устанавливает значение crypt False
+            if namespace[name]:
+                crypt = False
             continue
         elif not namespace['decrypt'] and not namespace['encrypt']: # При других значениях - пользователь не выбрал метод работы
             raise ValueError('Модуль не выбран, для просмотра справки используйте -h')
+        elif namespace[name] is None:
+            continue
         elif 'key' in namespace[name]: # Поиск ключевых аргументов из за особенности их передачи. Пр. namespace = {'encrypt': True, 'decrypt': False, 'target': 'target=try.txt', 'key': 'key=.crypto.key'}
             args['key'] = namespace[name][4:]
         elif 'target' in namespace[name]:
             args['target'] = namespace[name][7:]
+        else:
+            raise ValueError('Непредвиденная ошибка')
 
 
     if args['key']:
